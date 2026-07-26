@@ -1,0 +1,13 @@
+# Script-generated. Everything here is reproducible from sim/*.R.
+output/
+
+# Never versioned: downloaded from OSF in Phase 1, CC-BY, cite don't redistribute
+data-raw/
+data/
+
+.Rhistory
+.RData
+.Rproj.user/
+renv/library/
+renv/staging/
+.DS_Store

@@ -1,0 +1,114 @@
+# Early warning signals for critical transitions in mood
+
+Can rising autocorrelation and variance in intensive longitudinal mood data
+warn of a transition into depression, in a single person, before it happens?
+
+The hypothesis (van de Leemput et al., *PNAS* 2014; Wichers et al.,
+*Psychother Psychosom* 2016) is that mood is a dynamical system with alternative
+stable states, and that critical slowing down precedes a transition between
+them. The published critique (Bos & De Jonge, *PNAS* 2014, conceded by the
+original authors) is that between-subject evidence does not establish a
+within-person phenomenon. Whether intraindividual early warning signals
+anticipate intraindividual transitions is open, and it is a time-series problem
+about short, noisy, unevenly-spaced series.
+
+**Status: Phase 0 complete. No real data has been downloaded.**
+
+## Phases
+
+| Phase | Question | Status |
+|---|---|---|
+| 0 | Does the detector work when the ground truth is known? | done |
+| 1 | Can the published finding be reproduced? (Kossakowski et al. 2017) | not started |
+| 2 | How much does the conclusion move across analyst degrees of freedom? | not started, **preregister first** |
+| 3 | How much data does a real ESM study need for this to be usable? | not started, **preregister first** |
+
+Phase 0 exists so that no detector is ever tuned against the real data. Nothing
+in `/data-raw` until Phase 0 is reviewed and signed off.
+
+## Reproducing
+
+```
+R -e 'renv::restore()'      # if renv is bootstrapped; see Environment below
+Rscript sim/01_ideal.R      #  ~20 s
+Rscript sim/02_null_calibration.R   # ~1.5 min
+Rscript sim/03_degrade.R    #  ~25 s
+Rscript sim/04_power.R      # ~15 min on 11 cores
+```
+
+Run from the project root; the scripts assert this. Global seed `20260726`, set
+in `R/setup.R` and re-set per replicate so results are invariant to core count.
+
+## Layout
+
+```
+R/          model.R    stochastic double-well + control parameter
+            observe.R  ESM sampling, measurement noise, Likert, missingness
+            detect.R   detrending, EWS indicators, rolling windows, trend test
+            setup.R    seed, paths, sourced by everything
+sim/        01_ideal.R             gate: does CSD appear on clean data?
+            02_null_calibration.R  what does "significant" mean here?
+            03_degrade.R           what each layer of realism costs
+            04_power.R             the power analysis
+output/     figures/, tables/  (script-generated, safe to delete)
+DECISIONS.md   every contestable choice, what else was available, why this one
+```
+
+`data-raw/`, `data/`, `analysis/`, `preregistration/`, `report/` are empty and
+belong to Phases 1-3.
+
+## The model
+
+```
+dx = (-x^3 + x + c(t)) dt + sigma_p dW
+```
+
+The normal form of a fold bifurcation. `x` is latent mood valence, `c` a slow
+control parameter. Two stable branches exist for `|c| < 0.3849`; lowering `c`
+past `-0.3849` destroys the euthymic branch and the system drops into the
+depressed one.
+
+Critical slowing down is *derived*, not assumed: the local recovery rate is
+`lambda = -3x*^2 + 1`, and on the euthymic branch `x* -> 1/sqrt(3)` as the fold
+is approached, so `lambda -> 0`, the AR(1) coefficient `exp(lambda * gap) -> 1`
+and the stationary variance `sigma_p^2/(2|lambda|) -> inf`. That derivation is
+also the yardstick the detectors are checked against.
+
+One model time unit is calibrated to 5 hours, so that far from the bifurcation
+the lag-1 autocorrelation at 90-minute spacing is ~0.4, a typical ESM
+"emotional inertia" value. Every statement about days of data depends on this
+anchor (DECISIONS.md D3).
+
+## Indicators
+
+| | what it is | why it is here |
+|---|---|---|
+| `variance` | rolling variance of the detrended series | the standard indicator; rank-preserving under additive white noise, so unusually robust |
+| `ac1_naive` | `cor(y[-n], y[-1])` | what the applied literature computes; treats consecutive *observations* as lag-1 regardless of elapsed time |
+| `ac1_withinday` | same, restricted to gaps <= 3 h | cheap fix for the overnight gap; costs sample size |
+| `ac1_ou` | continuous-time OU fitted by exact ML on irregular gaps | estimates `lambda` directly, so irregular spacing is data rather than a nuisance |
+| `ac1_ou_me` | OU + explicit measurement-error variance, Kalman filter | the only one that separates true slowing from shrinking attenuation |
+
+Hand-rolled rather than taken from `earlywarnings`, which requires an evenly
+spaced `ts` object (DECISIONS.md D8).
+
+## Environment
+
+R 4.5.1. Phase 0 uses base R plus `ggplot2` only. That is deliberate: every
+statistical operation here is `cor`, `optim`, `lm` and `dnorm`, and the point of
+Phase 0 is to know exactly what the detector does.
+
+`earlywarnings`, `mlVAR`, `graphicalVAR`, `qgraph`, `psychonetrics`, `brms`,
+`osfr` and `quarto` are **not** installed yet. They are added in the phase that
+first needs them, and `renv.lock` is snapshotted at that point, rather than
+pinning a large stack that Phase 0 does not exercise.
+
+## Citation
+
+The dataset used from Phase 1 onward is CC-BY and must be cited wherever it
+appears:
+
+> Kossakowski, J. J., Groot, P. C., Haslbeck, J. M. B., Borsboom, D., & Wichers,
+> M. (2017). Data from 'Critical Slowing Down as a Personalized Early Warning
+> Signal for Depression'. *Journal of Open Psychology Data*, 5: 1.
+> https://doi.org/10.5334/jopd.29
