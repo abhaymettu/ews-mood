@@ -143,7 +143,8 @@ power$miss <- factor(power$miss, c("none", "mcar30", "mnar30"))
 pw <- subset(power, win_frac == 0.5)
 
 p1 <- ggplot(pw, aes(days, power, colour = factor(ppd), group = ppd)) +
-  geom_hline(yintercept = c(0.05, 0.8), linetype = c(3, 2), colour = "grey50") +
+  geom_hline(yintercept = 0.05, linetype = 3, colour = "grey50") +
+  geom_hline(yintercept = 0.80, linetype = 2, colour = "grey50") +
   geom_line() + geom_point(size = 1) +
   facet_grid(sigma_m ~ miss, labeller = label_both) +
   scale_colour_viridis_d(end = .85, name = "prompts/day") +
