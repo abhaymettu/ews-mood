@@ -41,7 +41,7 @@ stopifnot("ESMdata.csv not found after unzip" = file.exists(csv))
 d <- read.csv(csv, stringsAsFactors = FALSE)
 cat(sprintf("ESMdata.csv: %d rows x %d columns\n", nrow(d), ncol(d)))
 cat(sprintf("dates %s to %s (%d calendar days, %d with observations)\n",
-            min(d$date), max(d$date),
+            format(min(as.Date(d$date, "%d/%m/%y"))), format(max(as.Date(d$date, "%d/%m/%y"))),
             as.numeric(diff(range(as.Date(d$date, "%d/%m/%y")))) + 1,
             length(unique(d$date))))
 cat("phases:", paste(names(table(d$phase)), table(d$phase), sep = "=", collapse = "  "), "\n")
