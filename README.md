@@ -115,6 +115,20 @@ Phase 0 is to know exactly what the detector does.
 first needs them, and `renv.lock` is snapshotted at that point, rather than
 pinning a large stack that Phase 0 does not exercise.
 
+## Scope
+
+Independent work, not affiliated with or endorsed by the authors of any paper
+discussed. What is criticised is a **method** — a trend statistic that is
+anticonservative on overlapping windows, a measurement-error bias pointing
+toward the hypothesis, and a discretisation artefact that can produce the
+primary indicator's signal outright — not a research group. This analysis was
+only possible because the original authors published item-level raw data under
+CC-BY, which almost nobody does.
+
+Nothing here shows critical slowing down in mood is absent. See
+[report/report.qmd](report/report.qmd) sections on Errors, Limitations, and
+Acknowledgement.
+
 ## Citation
 
 The dataset used from Phase 1 onward is CC-BY and must be cited wherever it
