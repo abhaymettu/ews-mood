@@ -84,18 +84,32 @@ run_rep <- function(i, scenario) {
         tau = tau_[s])
 }
 
-ncore <- max(1L, parallel::detectCores() - 1L)
-cat(sprintf("grid: %d cells x %d window widths x %d indicators; %d reps x 3 scenarios on %d cores\n",
-            nrow(GRID), length(WIN_FRAC), length(INDS), NREP, ncore))
+## The grid costs ~30 min. Everything after it costs seconds. Cache the raw taus
+## so a bug in the summary or the figures does not mean re-running the physics --
+## which is exactly what happened the first time (a ggplot aesthetics error blew
+## up the script after the tables were already on disk). Delete the rds, or set
+## REFRESH=TRUE, to force a re-run.
+RAW <- file.path(TAB, "04_power_raw.rds")
+REFRESH <- isTRUE(as.logical(Sys.getenv("REFRESH", "FALSE")))
 
-t0 <- Sys.time()
-all_res <- do.call(rbind, unlist(lapply(c("transition", "static", "drift"), function(s) {
-  cat("  scenario:", s, "\n")
-  parallel::mclapply(1:NREP, run_rep, scenario = s, mc.cores = ncore)
-}), recursive = FALSE))
-cat(sprintf("done in %.1f min; %d rows\n",
-            as.numeric(Sys.time() - t0, units = "mins"), nrow(all_res)))
-saveRDS(all_res, file.path(TAB, "04_power_raw.rds"))
+if (!REFRESH && file.exists(RAW)) {
+  all_res <- readRDS(RAW)
+  cat(sprintf("using cached grid: %d rows (REFRESH=TRUE to re-simulate)\n", nrow(all_res)))
+  stopifnot("cached grid does not match the current GRID" =
+              nrow(unique(all_res[names(GRID)])) == nrow(GRID))
+} else {
+  ncore <- max(1L, parallel::detectCores() - 1L)
+  cat(sprintf("grid: %d cells x %d window widths x %d indicators; %d reps x 3 scenarios on %d cores\n",
+              nrow(GRID), length(WIN_FRAC), length(INDS), NREP, ncore))
+  t0 <- Sys.time()
+  all_res <- do.call(rbind, unlist(lapply(c("transition", "static", "drift"), function(s) {
+    cat("  scenario:", s, "\n")
+    parallel::mclapply(1:NREP, run_rep, scenario = s, mc.cores = ncore)
+  }), recursive = FALSE))
+  cat(sprintf("done in %.1f min; %d rows\n",
+              as.numeric(Sys.time() - t0, units = "mins"), nrow(all_res)))
+  saveRDS(all_res, RAW)
+}
 
 ## --- per-cell threshold from the static null, then power and false alarms ----
 key <- c("days", "ppd", "miss", "sigma_m", "win_frac", "indicator")
