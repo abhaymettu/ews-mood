@@ -72,6 +72,12 @@ Whether intraindividual early warning signals anticipate intraindividual
 transitions remains open. It is, at bottom, a time-series question about short,
 noisy, unevenly-spaced series — which is where this project sits.
 
+Two things should be read before the results. @sec-prior places this work
+against the existing literature — the central objection tested here was raised
+and answered once already, and a 2024 review reaches this report's overall
+conclusion independently. @sec-errors records the four design errors made along
+the way, three of which would have produced a wrong result.
+
 This report is organised around one discipline: **no detector was ever tuned
 against the real data.** Phase 0 validates the machinery on simulated data with
 a planted transition and known ground truth. Only then is the real dataset
@@ -566,6 +572,13 @@ from a rounding artefact; and that even a configuration meeting a conventional
 power bar would raise four false alarms for every real one in the population
 where it would be deployed.
 
+None of this is new in outline. Helmich et al. [-@helmich2024] reach the same
+overall conclusion from the literature, and the specific objection tested here
+was raised against this dataset a decade ago and answered in print
+(@sec-prior). What is added is narrow: a quantitative test where the published
+answer was qualitative, the finding that the confound is specific to the
+variance indicator, and the deployment arithmetic.
+
 The useful contribution is not a verdict on the theory. It is a specification of
 what an ESM study would have to look like for the question to be answerable at
 all — and the observation that the field's standard analysis is considerably more
@@ -576,6 +589,83 @@ were made here and caught; three of them would have produced a wrong result that
 looked publishable, and three of them pointed toward finding critical slowing
 down. An analysis is fragile when a careful analyst has to work this hard to
 avoid confirming the hypothesis by accident.
+
+# Relation to prior work {#sec-prior}
+
+A literature check was run **after** the analyses above and **before** this
+report was made public. It changed what this project can claim, and the honest
+version is narrower than the results alone would suggest.
+
+## The floor-effect objection is not new, and was already answered
+
+It was raised against this very dataset and rebutted in the source paper.
+Wichers et al. [-@wichers2016] write:
+
+> "It seems unlikely that autocorrelation and variance are a consequence of
+> floor effects, as time trends were removed in the autocorrelation analyses,
+> autocorrelations showed different dynamics over time compared to variance,
+> and effects were robustly present in variables that were far removed from the
+> end of the response scale during the entire time series."
+
+Their third clause is directly contradicted by @sec-phase1: the variance signal
+here is concentrated in items *near* their floor (mean $\tau$ +0.62) and absent
+in items far from it (−0.07).
+
+Their first two clauses hold up. Detrending was applied here too and does not
+remove the effect. And the autocorrelation indicators genuinely do behave
+differently from variance — **which is a point in their favour, not against
+them**: @sec-phase1 finds no floor/mid-scale split for autocorrelation
+(+0.25 vs +0.26).
+
+So the correct reading is a **refinement, not a refutation**: their rebuttal
+survives for the autocorrelation indicators and fails for the variance
+indicator, and their three arguments were qualitative where the objection needed
+a quantitative test.
+
+## The broader concern is live in the field
+
+von Klipstein et al. [-@vonklipstein2023] showed that floor effects account for
+a different and widely reported ESM finding — elevated affective reactivity in
+depressed participants — which disappeared once the distributional violation was
+modelled. The general worry that ESM response scales manufacture dynamic
+findings is established, and this project is one more instance of it rather than
+a discovery of it.
+
+Most importantly, **Helmich et al. [-@helmich2024] already conclude that early
+warning signals in emotion time series do not reliably predict symptom change,
+and that there is little empirical support for their clinical use.** The overall
+conclusion of this report converges with a published review. It should be read
+as independent corroboration, not as news.
+
+## What is actually added here
+
+Stated narrowly, because the honest list is short:
+
+1. **A constructive test where the published rebuttal was qualitative.** The
+   objection was previously answered with three arguments. @sec-phase1 answers it
+   with a synthetic series that follows the observed mean trajectory at constant
+   latent variance, and finds it reproduces 75% of the observed trend, with 12 of
+   12 items not beyond it.
+2. **A per-indicator split.** The confound is specific to variance and absent for
+   autocorrelation, which sharpens rather than overturns the earlier exchange.
+3. **A mechanism that is not "floor effects" in the usual sense.** Range
+   restriction at a floor is one case; the actual driver is that rounding
+   variance depends on where the mean sits *between any two category
+   boundaries*. That is why the mid-scale 11-point configuration in @sec-likert
+   was the worst tested — a floor is not required, only a moving mean.
+4. **The prediction ran forward.** The artefact was characterised in simulation
+   and the per-item pattern predicted before the dataset was downloaded, which is
+   a stronger test than finding it post hoc.
+5. **Deployment arithmetic.** I did not find positive predictive value at
+   realistic base rates reported in this literature; @sec-phase3 gives it.
+
+## Limits of this literature check
+
+It was quick, and it was mine. I could not obtain full text of
+Helmich et al. [-@helmich2024] — the publisher and both repository copies were
+behind access walls — so I cannot say how much of @sec-phase0 it already covers.
+Given its title and abstract, plausibly a good deal. **Anyone using this work
+should read that paper first and treat the overlap as unresolved.**
 
 # Acknowledgement and scope of the critique
 

@@ -115,6 +115,27 @@ Phase 0 is to know exactly what the detector does.
 first needs them, and `renv.lock` is snapshotted at that point, rather than
 pinning a large stack that Phase 0 does not exercise.
 
+## Relation to prior work
+
+**Read this before the results.** A literature check was run after the analyses
+and before publication, and it narrowed what this project can claim.
+
+- The floor-effect objection tested here was raised against this dataset and
+  **answered in the source paper** (Wichers et al. 2016). Their rebuttal holds
+  for the autocorrelation indicators and fails for variance — a refinement, not
+  a refutation.
+- Helmich et al. (2024, *Nature Reviews Psychology*) **already conclude** that
+  early warning signals do not reliably predict symptom change. This report
+  converges with a published review; it is corroboration, not news.
+- von Klipstein et al. (2023) showed floor effects explain a different ESM
+  finding, so the general concern is established in the field.
+
+What is added is narrow: a quantitative test where the published answer was
+qualitative, the finding that the confound is specific to the variance
+indicator, and the deployment arithmetic (PPV at realistic base rates). I could
+not obtain full text of Helmich et al. (2024) — **treat the overlap with it as
+unresolved.**
+
 ## Scope
 
 Independent work, not affiliated with or endorsed by the authors of any paper

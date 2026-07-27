@@ -2372,8 +2372,15 @@ window.Quarto = {
   </ul></li>
   <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">8</span> Limitations</a></li>
   <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">9</span> Conclusion</a></li>
-  <li><a href="#acknowledgement-and-scope-of-the-critique" id="toc-acknowledgement-and-scope-of-the-critique" class="nav-link" data-scroll-target="#acknowledgement-and-scope-of-the-critique"><span class="header-section-number">10</span> Acknowledgement and scope of the critique</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">11</span> References</a></li>
+  <li><a href="#sec-prior" id="toc-sec-prior" class="nav-link" data-scroll-target="#sec-prior"><span class="header-section-number">10</span> Relation to prior work</a>
+  <ul class="collapse">
+  <li><a href="#the-floor-effect-objection-is-not-new-and-was-already-answered" id="toc-the-floor-effect-objection-is-not-new-and-was-already-answered" class="nav-link" data-scroll-target="#the-floor-effect-objection-is-not-new-and-was-already-answered"><span class="header-section-number">10.1</span> The floor-effect objection is not new, and was already answered</a></li>
+  <li><a href="#the-broader-concern-is-live-in-the-field" id="toc-the-broader-concern-is-live-in-the-field" class="nav-link" data-scroll-target="#the-broader-concern-is-live-in-the-field"><span class="header-section-number">10.2</span> The broader concern is live in the field</a></li>
+  <li><a href="#what-is-actually-added-here" id="toc-what-is-actually-added-here" class="nav-link" data-scroll-target="#what-is-actually-added-here"><span class="header-section-number">10.3</span> What is actually added here</a></li>
+  <li><a href="#limits-of-this-literature-check" id="toc-limits-of-this-literature-check" class="nav-link" data-scroll-target="#limits-of-this-literature-check"><span class="header-section-number">10.4</span> Limits of this literature check</a></li>
+  </ul></li>
+  <li><a href="#acknowledgement-and-scope-of-the-critique" id="toc-acknowledgement-and-scope-of-the-critique" class="nav-link" data-scroll-target="#acknowledgement-and-scope-of-the-critique"><span class="header-section-number">11</span> Acknowledgement and scope of the critique</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">12</span> References</a></li>
   </ul>
 </nav>
 </div>
@@ -2429,6 +2436,7 @@ window.Quarto = {
 <h1 data-number="1"><span class="header-section-number">1</span> Motivation</h1>
 <p>Mood may behave as a dynamical system with alternative stable states. If it does, then before a transition into depression the system should show <em>critical slowing down</em>: as the basin of attraction flattens, recovery from perturbation slows, and the observable signature is rising autocorrelation and rising variance <span class="citation" data-cites="vandeleemput2014 wichers2016">(<a href="#ref-vandeleemput2014" role="doc-biblioref">Leemput et al. 2014</a>; <a href="#ref-wichers2016" role="doc-biblioref">Wichers et al. 2016</a>)</span>.</p>
 <p>The published critique is that between-subject evidence cannot establish a within-person phenomenon <span class="citation" data-cites="bos2014">(<a href="#ref-bos2014" role="doc-biblioref">Bos and De Jonge 2014</a>)</span>, a point the original authors conceded. Whether intraindividual early warning signals anticipate intraindividual transitions remains open. It is, at bottom, a time-series question about short, noisy, unevenly-spaced series — which is where this project sits.</p>
+<p>Two things should be read before the results. <a href="#sec-prior" class="quarto-xref">Section 10</a> places this work against the existing literature — the central objection tested here was raised and answered once already, and a 2024 review reaches this report’s overall conclusion independently. <a href="#sec-errors" class="quarto-xref">Section 7</a> records the four design errors made along the way, three of which would have produced a wrong result.</p>
 <p>This report is organised around one discipline: <strong>no detector was ever tuned against the real data.</strong> Phase 0 validates the machinery on simulated data with a planted transition and known ground truth. Only then is the real dataset downloaded.</p>
 </section>
 <section id="what-critical-slowing-down-predicts" class="level1" data-number="2">
@@ -3363,22 +3371,63 @@ Important
 <h1 data-number="9"><span class="header-section-number">9</span> Conclusion</h1>
 <p>The theory is not refuted here. On clean simulated data the planted signal is real and detectable. Everything that fails, fails downstream of that: in measurement, in inference, and in deployment arithmetic.</p>
 <p>What the project does show is that three independent mechanisms — an anticonservative trend test, a measurement-error bias, and a discretisation artefact — all push toward finding critical slowing down whether or not it is present; that in the canonical dataset the variance signal is not distinguishable from a rounding artefact; and that even a configuration meeting a conventional power bar would raise four false alarms for every real one in the population where it would be deployed.</p>
+<p>None of this is new in outline. Helmich et al. <span class="citation" data-cites="helmich2024">(<a href="#ref-helmich2024" role="doc-biblioref">2024</a>)</span> reach the same overall conclusion from the literature, and the specific objection tested here was raised against this dataset a decade ago and answered in print (<a href="#sec-prior" class="quarto-xref">Section 10</a>). What is added is narrow: a quantitative test where the published answer was qualitative, the finding that the confound is specific to the variance indicator, and the deployment arithmetic.</p>
 <p>The useful contribution is not a verdict on the theory. It is a specification of what an ESM study would have to look like for the question to be answerable at all — and the observation that the field’s standard analysis is considerably more fragile than its published confidence suggests.</p>
 <p>The strongest evidence for that fragility is in <a href="#sec-errors" class="quarto-xref">Section 7</a>. Four design errors were made here and caught; three of them would have produced a wrong result that looked publishable, and three of them pointed toward finding critical slowing down. An analysis is fragile when a careful analyst has to work this hard to avoid confirming the hypothesis by accident.</p>
 </section>
-<section id="acknowledgement-and-scope-of-the-critique" class="level1" data-number="10">
-<h1 data-number="10"><span class="header-section-number">10</span> Acknowledgement and scope of the critique</h1>
+<section id="sec-prior" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Relation to prior work</h1>
+<p>A literature check was run <strong>after</strong> the analyses above and <strong>before</strong> this report was made public. It changed what this project can claim, and the honest version is narrower than the results alone would suggest.</p>
+<section id="the-floor-effect-objection-is-not-new-and-was-already-answered" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="the-floor-effect-objection-is-not-new-and-was-already-answered"><span class="header-section-number">10.1</span> The floor-effect objection is not new, and was already answered</h2>
+<p>It was raised against this very dataset and rebutted in the source paper. Wichers et al. <span class="citation" data-cites="wichers2016">(<a href="#ref-wichers2016" role="doc-biblioref">2016</a>)</span> write:</p>
+<blockquote class="blockquote">
+<p>“It seems unlikely that autocorrelation and variance are a consequence of floor effects, as time trends were removed in the autocorrelation analyses, autocorrelations showed different dynamics over time compared to variance, and effects were robustly present in variables that were far removed from the end of the response scale during the entire time series.”</p>
+</blockquote>
+<p>Their third clause is directly contradicted by <a href="#sec-phase1" class="quarto-xref">Section 4</a>: the variance signal here is concentrated in items <em>near</em> their floor (mean <span class="math inline">\(\tau\)</span> +0.62) and absent in items far from it (−0.07).</p>
+<p>Their first two clauses hold up. Detrending was applied here too and does not remove the effect. And the autocorrelation indicators genuinely do behave differently from variance — <strong>which is a point in their favour, not against them</strong>: <a href="#sec-phase1" class="quarto-xref">Section 4</a> finds no floor/mid-scale split for autocorrelation (+0.25 vs +0.26).</p>
+<p>So the correct reading is a <strong>refinement, not a refutation</strong>: their rebuttal survives for the autocorrelation indicators and fails for the variance indicator, and their three arguments were qualitative where the objection needed a quantitative test.</p>
+</section>
+<section id="the-broader-concern-is-live-in-the-field" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="the-broader-concern-is-live-in-the-field"><span class="header-section-number">10.2</span> The broader concern is live in the field</h2>
+<p>von Klipstein et al. <span class="citation" data-cites="vonklipstein2023">(<a href="#ref-vonklipstein2023" role="doc-biblioref">2023</a>)</span> showed that floor effects account for a different and widely reported ESM finding — elevated affective reactivity in depressed participants — which disappeared once the distributional violation was modelled. The general worry that ESM response scales manufacture dynamic findings is established, and this project is one more instance of it rather than a discovery of it.</p>
+<p>Most importantly, <strong>Helmich et al. <span class="citation" data-cites="helmich2024">(<a href="#ref-helmich2024" role="doc-biblioref">2024</a>)</span> already conclude that early warning signals in emotion time series do not reliably predict symptom change, and that there is little empirical support for their clinical use.</strong> The overall conclusion of this report converges with a published review. It should be read as independent corroboration, not as news.</p>
+</section>
+<section id="what-is-actually-added-here" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="what-is-actually-added-here"><span class="header-section-number">10.3</span> What is actually added here</h2>
+<p>Stated narrowly, because the honest list is short:</p>
+<ol type="1">
+<li><strong>A constructive test where the published rebuttal was qualitative.</strong> The objection was previously answered with three arguments. <a href="#sec-phase1" class="quarto-xref">Section 4</a> answers it with a synthetic series that follows the observed mean trajectory at constant latent variance, and finds it reproduces 75% of the observed trend, with 12 of 12 items not beyond it.</li>
+<li><strong>A per-indicator split.</strong> The confound is specific to variance and absent for autocorrelation, which sharpens rather than overturns the earlier exchange.</li>
+<li><strong>A mechanism that is not “floor effects” in the usual sense.</strong> Range restriction at a floor is one case; the actual driver is that rounding variance depends on where the mean sits <em>between any two category boundaries</em>. That is why the mid-scale 11-point configuration in <a href="#sec-likert" class="quarto-xref">Section 3.4</a> was the worst tested — a floor is not required, only a moving mean.</li>
+<li><strong>The prediction ran forward.</strong> The artefact was characterised in simulation and the per-item pattern predicted before the dataset was downloaded, which is a stronger test than finding it post hoc.</li>
+<li><strong>Deployment arithmetic.</strong> I did not find positive predictive value at realistic base rates reported in this literature; <a href="#sec-phase3" class="quarto-xref">Section 6</a> gives it.</li>
+</ol>
+</section>
+<section id="limits-of-this-literature-check" class="level2" data-number="10.4">
+<h2 data-number="10.4" class="anchored" data-anchor-id="limits-of-this-literature-check"><span class="header-section-number">10.4</span> Limits of this literature check</h2>
+<p>It was quick, and it was mine. I could not obtain full text of Helmich et al. <span class="citation" data-cites="helmich2024">(<a href="#ref-helmich2024" role="doc-biblioref">2024</a>)</span> — the publisher and both repository copies were behind access walls — so I cannot say how much of <a href="#sec-phase0" class="quarto-xref">Section 3</a> it already covers. Given its title and abstract, plausibly a good deal. <strong>Anyone using this work should read that paper first and treat the overlap as unresolved.</strong></p>
+</section>
+</section>
+<section id="acknowledgement-and-scope-of-the-critique" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Acknowledgement and scope of the critique</h1>
 <p>This is independent work. It is not affiliated with, endorsed by, or reviewed by the authors of any of the papers discussed.</p>
 <p>It should be said plainly that <strong>this analysis exists only because those authors published their raw data.</strong> Kossakowski et al. <span class="citation" data-cites="kossakowski2017">(<a href="#ref-kossakowski2017" role="doc-biblioref">2017</a>)</span> released a complete 239-day single-subject ESM dataset under CC-BY, including the medication-taper phase and the item-level codebook. Almost no one does this. The artefact documented in <a href="#sec-phase1" class="quarto-xref">Section 4</a> could not have been found without item-level access to a dataset where the response scales and their floors were recoverable, and it would not have been found in a summary table.</p>
 <p>The same is true of the underlying scientific exchange. van de Leemput et al. <span class="citation" data-cites="vandeleemput2014">(<a href="#ref-vandeleemput2014" role="doc-biblioref">2014</a>)</span> proposed a falsifiable mechanism, Bos &amp; De Jonge <span class="citation" data-cites="bos2014">(<a href="#ref-bos2014" role="doc-biblioref">2014</a>)</span> published a specific objection, and the original authors conceded the point in print. That is the process working.</p>
 <p>What is criticised here is a <strong>method</strong>, not a research group: a trend statistic whose nominal p-values are wrong by a factor of six on overlapping windows, a measurement-error bias that points toward the hypothesis, and a discretisation artefact that can produce the primary indicator’s signal outright. Those problems are properties of the standard analysis pipeline and are not specific to any author. Where this report can distinguish the artefact from the phenomenon it does so; where it cannot — which is most places, with N = 1 — it says so.</p>
 <p>Nothing here shows that critical slowing down in mood is absent, and nothing here should be cited as though it does.</p>
 </section>
-<section id="references" class="level1" data-number="11">
-<h1 data-number="11"><span class="header-section-number">11</span> References</h1>
+<section id="references" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> References</h1>
 <div id="refs" class="references csl-bib-body hanging-indent" role="list">
 <div id="ref-bos2014" class="csl-entry" role="listitem">
 Bos, Elisabeth H, and Peter De Jonge. 2014. <span>“Critical Slowing down in Depression Is a Great Idea That Still Needs Empirical Proof.”</span> <em>Proceedings of the National Academy of Sciences</em> 111 (10): E878. <a href="https://doi.org/10.1073/pnas.1323672111">https://doi.org/10.1073/pnas.1323672111</a>.
+</div>
+<div id="ref-helmich2024" class="csl-entry" role="listitem">
+Helmich, Marieke A, Marieke J Schreuder, Laura F Bringmann, Harriëtte Riese, Evelien Snippe, and Arnout C Smit. 2024. <span>“Slow down and Be Critical Before Using Early Warning Signals in Psychopathology.”</span> <em>Nature Reviews Psychology</em>, ahead of print. <a href="https://doi.org/10.1038/s44159-024-00369-y">https://doi.org/10.1038/s44159-024-00369-y</a>.
+</div>
+<div id="ref-vonklipstein2023" class="csl-entry" role="listitem">
+Klipstein, Lino von, Michelle N Servaas, Femke Lamers, Robert A Schoevers, Klaas J Wardenaar, and Harriëtte Riese. 2023. <span>“Increased Affective Reactivity Among Depressed Individuals Can Be Explained by Floor Effects: An Experience Sampling Study.”</span> <em>Journal of Affective Disorders</em> 334: 370–81. <a href="https://doi.org/10.1016/j.jad.2023.04.118">https://doi.org/10.1016/j.jad.2023.04.118</a>.
 </div>
 <div id="ref-kossakowski2017" class="csl-entry" role="listitem">
 Kossakowski, Jolanda J, Peter C Groot, Jonas M B Haslbeck, Denny Borsboom, and Marieke Wichers. 2017. <span>“Data from ’Critical Slowing down as a Personalized Early Warning Signal for Depression’.”</span> <em>Journal of Open Psychology Data</em> 5 (1): 1. <a href="https://doi.org/10.5334/jopd.29">https://doi.org/10.5334/jopd.29</a>.
