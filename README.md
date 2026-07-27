@@ -136,6 +136,21 @@ indicator, and the deployment arithmetic (PPV at realistic base rates). I could
 not obtain full text of Helmich et al. (2024) — **treat the overlap with it as
 unresolved.**
 
+## Replication failed
+
+The discretisation artefact was taken to a second dataset (Fisher et al. 2017,
+40 participants, 840 item-series, 0-100 visual analog scales). Rounding those
+same series to 7 categories **did not** create the pattern found in
+Kossakowski: the near-bound split was -0.090 on VAS and -0.085 after
+discretising (paired p = 0.59 across participants). The obvious rescue is ruled
+out — Fisher's item means travel 3.5x *further* than the Kossakowski
+participant's.
+
+So the artefact is demonstrable in simulation and consistent with the
+Kossakowski data, but **it is not a general property of coarse ESM scales.**
+Whether the Kossakowski pattern reflects that participant's monotone
+well-to-ill progression or is chance in one dataset is **not resolved here.**
+
 ## Scope
 
 Independent work, not affiliated with or endorsed by the authors of any paper

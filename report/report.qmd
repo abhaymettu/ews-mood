@@ -590,6 +590,91 @@ looked publishable, and three of them pointed toward finding critical slowing
 down. An analysis is fragile when a careful analyst has to work this hard to
 avoid confirming the hypothesis by accident.
 
+# Replication attempt: the artefact does not generalise {#sec-replication}
+
+The Phase 1 result is N = 1. To test whether the discretisation artefact is a
+general property of coarse ESM scales, it was taken to a second dataset.
+
+Fisher et al. [-@fisher2017] is close to ideal for this, for a reason unrelated
+to transitions: their 28 items are **0–100 visual analog scales**. With 101
+categories the rounding artefact should be negligible. Discretising the same
+series to 7 categories should create it. That is a within-participant,
+within-item comparison — identical measurements, two response resolutions,
+nothing else changed.
+
+**Registered prediction: on VAS, variance $\tau$ unrelated to an item's scale
+position; after discretisation, higher $\tau$ for items near a bound.**
+
+```{r fisherrep}
+fr <- read.csv(file.path(TAB, "P4_fisher_replication.csv"))
+ag <- aggregate(fr[c("tau_vas","tau_likert")], list(`near a bound` = fr$near_bound), mean)
+ag$n <- as.vector(table(fr$near_bound))
+knitr::kable(ag, digits = 3, row.names = FALSE,
+  caption = sprintf("%d item-series, %d participants (Fisher et al. 2017).",
+                    nrow(fr), length(unique(fr$pid))))
+```
+
+![](../output/figures/P4_fisher_replication.png)
+
+**The prediction failed.** The near-bound split is
+`r sprintf("%+.3f", mean(fr$tau_vas[fr$near_bound])-mean(fr$tau_vas[!fr$near_bound]))`
+on the VAS scale and
+`r sprintf("%+.3f", mean(fr$tau_likert[fr$near_bound])-mean(fr$tau_likert[!fr$near_bound]))`
+after discretising the identical data — no difference. Regressing the change in
+$\tau$ on scale position gives a slope of −0.004 (p = 0.56). Across participants,
+the split was larger under discretisation in 19 of 35, which is chance
+(paired p = 0.59).
+
+## The obvious rescue is ruled out
+
+The mechanism needs the mean to *move* across category boundaries, so the
+natural explanation is that Fisher's participants — assessed for 30 days without
+a transition — have stationary means. They do not. Measured identically, in
+7-point category units:
+
+| dataset | median mean-shift | IQR | max |
+|---|---|---|---|
+| Fisher et al. | **0.82** | 0.51–1.24 | 3.51 |
+| Kossakowski et al. | **0.23** | 0.17–0.27 | 0.62 |
+
+Fisher's item means travel roughly **3.5× further** than the Kossakowski
+participant's. Restricting to the top decile of movers does not recover the
+predicted pattern either; the discretised split there is
+−0.144 against −0.101 on VAS, the wrong direction.
+
+## What this does to the claims
+
+Three things survive and one does not.
+
+**Survives.** The artefact is real and reproducible *in simulation*
+(@sec-likert): holding dynamics fixed and moving only the response scale drives
+the variance $\tau$ from −0.98 to +0.96. That is a demonstration, not an
+inference, and it stands.
+
+**Survives.** The Phase 1 description of the Kossakowski participant is
+unchanged: the variance signal there is concentrated in floored items, and a
+constant-variance synthetic reproduces 75% of it (@sec-phase1). Nothing in this
+replication contradicts what was measured there.
+
+**Survives.** The recommendation to prefer autocorrelation indicators on coarse
+scales is unaffected — it never depended on the artefact being universal, only
+on variance being the more fragile indicator when it does occur.
+
+**Does not survive: the generality.** I cannot claim that discretisation
+routinely manufactures early-warning variance signals in ESM data. In 840
+item-series from 40 people it did not. Whatever produces the Kossakowski
+pattern is either specific to that participant's situation — a long, monotone
+progression from well to ill, which Fisher's already-symptomatic and
+non-transitioning sample does not contain — or is chance in a single dataset.
+**Those two possibilities are not distinguished here.**
+
+The most likely untested explanation is that the mechanism requires *monotone*
+movement across a boundary, whereas Fisher's larger mean-shifts are wandering
+rather than directional, and a mean that crosses a boundary back and forth
+produces no monotone variance trend. That is post hoc and would need a third
+dataset with documented transitions to test. It is the single most useful next
+piece of work on this project.
+
 # Relation to prior work {#sec-prior}
 
 A literature check was run **after** the analyses above and **before** this
