@@ -1,0 +1,473 @@
+---
+title: "Early warning signals for critical transitions in mood"
+subtitle: "A simulation study, a reproduction, and a design recommendation"
+author: "Abhay Mettu"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: cosmo
+    code-fold: true
+    embed-resources: true
+    fig-width: 9
+    fig-height: 5
+execute:
+  echo: false
+  warning: false
+  message: false
+bibliography: references.bib
+---
+
+```{r setup}
+#| include: false
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+```
+
+```{r load}
+source("R/setup.R")
+fmt <- function(x, d = 3) formatC(x, format = "f", digits = d)
+
+p0_thr   <- read.csv(file.path(TAB, "02_thresholds.csv"))
+p0_deg   <- read.csv(file.path(TAB, "03_degradation_tau.csv"))
+p0_att   <- read.csv(file.path(TAB, "03_attenuation.csv"))
+p0_pw    <- read.csv(file.path(TAB, "04_power.csv"))
+p0_lik   <- read.csv(file.path(TAB, "07_likert_artifact.csv"))
+p0_me    <- read.csv(file.path(TAB, "05_measurement_error.csv"))
+p0_rec   <- read.csv(file.path(TAB, "05_recovery.csv"))
+p1_comp  <- read.csv(file.path(TAB, "P1_reproduce_composites.csv"))
+p1_item  <- read.csv(file.path(TAB, "P1_reproduce_items.csv"))
+p1_art   <- read.csv(file.path(TAB, "P1_artefact_test.csv"))
+p2       <- readRDS(file.path(TAB, "P2_speccurve.rds"))
+p3       <- readRDS(file.path(TAB, "P3_design.rds"))
+clean    <- readRDS(file.path(PROJ, "data", "esm_clean.rds"))
+```
+
+::: {.callout-note}
+## Reproducibility
+
+Every number in this report is computed from the scripts in `sim/` and
+`analysis/`, run in order from a clean clone. Global seed `20260726`. The
+dataset is fetched from OSF by `analysis/00_download.R` and pinned by SHA-256;
+it is not redistributed here.
+
+Data: Kossakowski, J. J., Groot, P. C., Haslbeck, J. M. B., Borsboom, D., &
+Wichers, M. (2017). Data from 'Critical Slowing Down as a Personalized Early
+Warning Signal for Depression'. *Journal of Open Psychology Data*, 5: 1.
+doi:10.5334/jopd.29. CC-BY 4.0.
+:::
+
+# Motivation
+
+Mood may behave as a dynamical system with alternative stable states. If it
+does, then before a transition into depression the system should show *critical
+slowing down*: as the basin of attraction flattens, recovery from perturbation
+slows, and the observable signature is rising autocorrelation and rising
+variance [@vandeleemput2014; @wichers2016].
+
+The published critique is that between-subject evidence cannot establish a
+within-person phenomenon [@bos2014], a point the original authors conceded.
+Whether intraindividual early warning signals anticipate intraindividual
+transitions remains open. It is, at bottom, a time-series question about short,
+noisy, unevenly-spaced series — which is where this project sits.
+
+This report is organised around one discipline: **no detector was ever tuned
+against the real data.** Phase 0 validates the machinery on simulated data with
+a planted transition and known ground truth. Only then is the real dataset
+downloaded.
+
+# What critical slowing down predicts
+
+The model is the normal form of a fold bifurcation,
+
+$$dx = \left(-x^3 + x + c(t)\right)dt + \sigma_p\,dW,$$
+
+with $x$ a latent mood valence and $c$ a slow control parameter. Two stable
+branches exist for $|c| < 2/(3\sqrt3) = 0.385$; lowering $c$ past $-0.385$
+destroys the euthymic branch and the system drops into the depressed one.
+
+Critical slowing down is *derived*, not assumed. The local recovery rate at a
+stable point is $\lambda = -3x^{*2} + 1$, and on the euthymic branch
+$x^* \to 1/\sqrt3$ as the fold is approached, so $\lambda \to 0$. The linearised
+process is Ornstein–Uhlenbeck, giving
+
+$$\text{AR}(1)\ \text{over gap } \Delta = e^{\lambda\Delta} \to 1,
+\qquad \text{Var} = \frac{\sigma_p^2}{2|\lambda|} \to \infty.$$
+
+That derivation is also the yardstick: the detectors must recover it on clean
+data or they are broken.
+
+One model time unit is calibrated to 5 hours, so that far from the bifurcation
+the lag-1 autocorrelation at 90-minute spacing is ≈ 0.4, a typical ESM
+"emotional inertia" value. **Every statement about days of data depends on this
+anchor**, and it is not swept (`DECISIONS.md` D3).
+
+# Simulation validation {#sec-phase0}
+
+## The gate
+
+![](../output/figures/01_ideal_state.png)
+
+![](../output/figures/01_ideal_indicators.png)
+
+On dense, noise-free data the indicators rise ahead of the transition with
+Kendall's $\tau \approx 0.70$, and the empirical rolling AC1 tracks the analytic
+$\lambda(c)$. On a non-tipping null the same machinery gives $\tau \approx 0.02$.
+Euler–Maruyama step size was verified rather than assumed.
+
+## The trend test is anticonservative by a factor of six
+
+```{r thr}
+knitr::kable(
+  data.frame(
+    `window (days)` = p0_thr$win,
+    indicator = p0_thr$indicator,
+    `nominal 5% critical tau` = round(p0_thr$thr_nominal, 3),
+    `actual 5% point of null` = round(p0_thr$thr_emp95, 3),
+    `true size of a nominal 5% test` = sprintf("%.0f%%", 100 * p0_thr$fpr_if_nominal),
+    check.names = FALSE),
+  caption = "Rolling windows overlap by ~93%, so the Kendall tau computed on the indicator series is heavily autocorrelated and its nominal p-value is meaningless.")
+```
+
+**A nominally 5% test rejects `r sprintf("%.0f–%.0f%%", 100*min(p0_thr$fpr_if_nominal), 100*max(p0_thr$fpr_if_nominal))`
+of the time under the null.** Every threshold in this project is calibrated by
+simulation or by surrogate data; nominal p-values are used nowhere.
+
+## Measurement error biases toward the hypothesis
+
+An AR(1) observed with additive white noise is an ARMA(1,1), so the naive lag-1
+autocorrelation is attenuated by the reliability ratio $s^2/(s^2+\sigma_m^2)$.
+Because $s^2$ grows on the approach to the fold, **the attenuation shrinks along
+the approach**, and the measured autocorrelation rises partly for a reason
+unrelated to slowing down.
+
+![](../output/figures/03_attenuation.png)
+
+Decomposed on a single trajectory, an observed AC1 rise of +0.118 splits into
+**+0.088 from genuine slowing** and **+0.104 from the reliability ratio
+improving**. Roughly half the apparent signal is measurement error attenuating
+less — a bias pointing the same way as the hypothesis being tested.
+
+## The response scale can invent the signal, or reverse it {#sec-likert}
+
+The largest finding in Phase 0, and it was found by chasing an anomaly: the
+clinical null showed a *negative* variance trend where the latent variance
+genuinely rises ~14%.
+
+The variance of a rounded variable depends on where its mean sits between two
+category boundaries. Approaching a transition the latent mean *slides*, so it
+moves relative to the boundaries and drags rounding variance with it.
+
+```{r lik}
+lk <- subset(p0_lik, indicator == "variance")[c("cfg", "tau_drift", "auc")]
+names(lk) <- c("response model", "tau on the null (truth: mildly positive)", "AUC")
+knitr::kable(lk, digits = 3, row.names = FALSE,
+  caption = "Identical dynamics throughout. Only the response scale changes.")
+```
+
+![](../output/figures/07_likert_artifact.png)
+
+Autocorrelation indicators sit at AUC 0.72–0.76 across all four response models.
+Variance ranges 0.77–0.95. **A finer scale is not the fix** — the 11-point
+configuration was the worst tested.
+
+## Modelling measurement error correctly does not help
+
+```{r me}
+knitr::kable(p0_rec[c("sigma_m", "ac1_naive", "lam_ou", "lam_ou_me", "sm_hat")],
+  digits = 3, row.names = FALSE, col.names = c("sigma_m", "naive AC1",
+  "lambda, fit_ou", "lambda, fit_ou_me", "sigma_m recovered"),
+  caption = "Parameter recovery on a stationary OU at the real ESM sampling grid. True lambda = 0.6 per hour.")
+```
+
+`fit_ou` is catastrophic at realistic noise, returning $\lambda$ twenty times too
+large: it reads white measurement noise as ultra-fast mean reversion. The
+state-space version recovers both parameters far better — **and still loses on
+discrimination at every noise level** (AUC 0.72 / 0.62 / 0.55 against 0.91 /
+0.71 / 0.65 for `ac1_ou`). On ~450-observation windows a four-parameter Kalman
+fit has enough sampling variance that the indicator series is mostly noise.
+Removing the bias cost more variance than the bias was worth.
+
+## Power
+
+![](../output/figures/04_power_grid.png)
+
+```{r pow}
+mm <- do.call(rbind, lapply(c("days","ppd","miss","sigma_m"), function(v){
+  a <- aggregate(p0_pw["power"], list(level = p0_pw[[v]]), mean, na.rm = TRUE)
+  data.frame(lever = v, level = as.character(a$level), power = round(a$power, 3))
+}))
+knitr::kable(mm, row.names = FALSE, caption = "Mean power over the rest of the 216-cell grid.")
+```
+
+**Measurement noise is the dominant lever** — a 2.6× swing, larger than anything
+the study design controls.
+
+# Reproduction {#sec-phase1}
+
+The dataset is a single participant with a history of major depressive disorder:
+`r nrow(clean$data)` beeps over `r max(clean$data$day)` days, ~10 prompts/day
+protocol at `r sprintf("%.0f%%", 100*nrow(clean$data)/(10*max(clean$data$day)))`
+realised compliance, including a double-blind antidepressant taper.
+
+## The transition is an interpretation
+
+![](../output/figures/P1_scl90.png)
+
+The weekly SCL-90 depression score does not jump. It sits at 1.0–1.6 through
+phases 1–3 and rises through phase 4 to a sustained 1.8–2.5. A least-squares
+changepoint puts the transition at **day `r clean$transition$changepoint`**; the
+first sustained crossing of baseline mean + 2 SD puts it at
+**day `r clean$transition$crossing`**. Both are carried forward.
+
+## Nominal significance versus a surrogate null
+
+![](../output/figures/P1_indicators.png)
+
+```{r p1}
+knitr::kable(p1_comp[c("series_var","transition_def","indicator","tau","p_boot","p_nominal")],
+  digits = c(0,0,0,3,3,8), row.names = FALSE,
+  col.names = c("series","transition","indicator","tau","p (block bootstrap)","p (nominal)"),
+  caption = "Pre-transition window. Same data, two nulls.")
+```
+
+**`r sum(p1_comp$p_nominal < .05)` of `r nrow(p1_comp)` tests are significant
+with nominal p-values. `r sum(p1_comp$p_boot < .05)` of `r nrow(p1_comp)` survive
+a moving-block bootstrap** that preserves the local dynamics but destroys the
+trend. The one survivor is one test among sixteen with no multiplicity
+correction.
+
+## An out-of-sample prediction, and the test that was needed to use it
+
+@sec-likert predicted, in simulation and before this dataset was downloaded, that
+the variance indicator is confounded by an item's position on its response
+scale. In this participant:
+
+```{r p1split}
+iv <- subset(p1_item, indicator == "variance")
+knitr::kable(iv[order(iv$headroom), c("item","headroom","tau","p_boot")],
+  digits = 3, row.names = FALSE,
+  col.names = c("item","categories to nearest bound","tau","p (bootstrap)"),
+  caption = "Variance indicator by item, pre-transition.")
+```
+
+Mean $\tau$ is **+0.62 for items within 1.5 categories of their floor** and
+**−0.07 for mid-scale items**. The autocorrelation indicators show no such split.
+
+But the three floored items are symptom items, floored *because the person is not
+yet symptomatic*. Genuine symptom emergence predicts the same correlation. So:
+generate a synthetic series following each item's observed mean trajectory with
+**constant latent variance** — no slowing down at all — round it to the item's
+scale, and run the identical pipeline.
+
+![](../output/figures/P1_artefact_test.png)
+
+```{r art}
+near <- p1_art$headroom < 1.5
+knitr::kable(data.frame(
+  group = c("within 1.5 categories of floor", "mid-scale"),
+  n = c(sum(near), sum(!near)),
+  `observed tau` = round(c(mean(p1_art$obs_tau[near]), mean(p1_art$obs_tau[!near])), 3),
+  `artefact-only tau` = round(c(mean(p1_art$sim_tau_mean[near]), mean(p1_art$sim_tau_mean[!near])), 3),
+  check.names = FALSE), row.names = FALSE,
+  caption = "A constant-variance synthetic reproduces most of the observed trend.")
+```
+
+The artefact-only series reproduces
+**`r sprintf("%.0f%%", 100*mean(p1_art$sim_tau_mean[near])/mean(p1_art$obs_tau[near]))`
+of the observed variance trend** in the floored items, and for
+**`r sum(p1_art$p_artefact_enough > .05)` of `r nrow(p1_art)` items** the observed
+trend is not beyond what rounding alone produces.
+
+::: {.callout-important}
+The variance early-warning signal in this dataset carries no demonstrable
+information beyond the item mean — and the item mean is the symptom. An early
+warning that is a function of current symptom level is not an early warning.
+:::
+
+# Robustness {#sec-phase2}
+
+Preregistered in `preregistration/PREREG_phase2_phase3.md`, committed before any
+Phase 2 code existed. `r nrow(p2$spec)` specifications; none failed to compute.
+
+![](../output/figures/P2_speccurve.png)
+
+![](../output/figures/P2_by_dimension.png)
+
+```{r p2j}
+knitr::kable(p2$joint, digits = 3, row.names = FALSE,
+  caption = sprintf("Registered joint test. Observed S1 = %+.3f, S2 = %.3f. 100 surrogate curves per block length, entire curve recomputed each time.", p2$S1, p2$S2))
+```
+
+## Registered predictions: three of four falsified
+
+```{r p2pred}
+sc <- p2$spec[!is.na(p2$spec$tau), ]
+top <- sc[sc$tau >= quantile(sc$tau, .90), ]
+rng_of <- function(v) diff(range(tapply(sc$tau, sc[[v]], median, na.rm = TRUE)))
+knitr::kable(data.frame(
+  prediction = c("P1 median positive but joint p > .05",
+                 "P2 top decile is majority variance-on-floored",
+                 "P3 detrending moves tau more than window width",
+                 "P4 only `series` flips the median sign"),
+  outcome = c("FALSIFIED", "FALSIFIED", "FALSIFIED", "SUPPORTED"),
+  detail = c(sprintf("tau %+.3f, p = %.3f", p2$S1, min(p2$joint$p_S1)),
+             sprintf("%.0f%% of top decile", 100*mean(top$indicator=="variance" & top$series=="floored")),
+             sprintf("detrend range %.3f vs window range %.3f", rng_of("detrend"), rng_of("win")),
+             "no dimension flips the sign")),
+  row.names = FALSE)
+```
+
+Reported as they came out. Three of four were wrong, and the way they were wrong
+is the interesting part.
+
+**The curve is robustly positive.** Median $\tau$ = `r fmt(p2$S1)`,
+`r sprintf("%.0f%%", 100*p2$S2)` of specifications positive, and no dimension —
+not one — flips the sign of the median. This is the opposite of the fragility
+result I expected, and it must be reported as such.
+
+**But window width dominates everything.** Median $\tau$ runs from
+`r fmt(tapply(sc$tau, sc$win, median)[1])` at 20-day windows to
+`r fmt(tapply(sc$tau, sc$win, median)[4])` at 60-day windows, a range of
+`r fmt(rng_of("win"))`, while detrending moves it by `r fmt(rng_of("detrend"))` —
+a factor of about thirty. Wider windows mean fewer, more overlapping windows and
+a smoother indicator series, which inflates $|\tau|$ mechanically. The single
+largest analyst degree of freedom is the one with the least substantive content.
+
+::: {.callout-warning}
+## What the joint test does and does not license
+
+A moving-block bootstrap destroys *all* slow temporal structure. Beating it
+establishes that slow structure exists in these series — which is not in doubt,
+since the participant became depressed. It does **not** establish that the
+structure is critical slowing down. Combined with @sec-phase1, where the variance
+component proved indistinguishable from a rounding artefact, the honest reading
+is: the curve is consistently positive, and what it is detecting is not
+established to be the phenomenon of interest.
+:::
+
+# Design recommendations {#sec-phase3}
+
+Registered rule, fixed in advance: a configuration is *usable* only if power
+$\ge$ 0.80 **and** false alarm rate $\le$ 0.10.
+
+**`r sum(p3$pw$usable)` of `r nrow(p3$pw)` configurations are usable.** (P6
+supported.)
+
+## Translating into what a clinician faces
+
+Power and false-alarm rate are per-assessment quantities. Nobody experiences
+per-assessment quantities. A $D$-day monitoring window gives $365/D$
+non-overlapping assessments per patient-year, and what decides deployability is
+the share of raised alarms that are real.
+
+![](../output/figures/P3_ppv.png)
+
+```{r p3tab}
+top8 <- head(p3$pw[order(-p3$pw$power), ], 6)
+knitr::kable(top8[c("resp","days","ppd","miss","sigma_m","power","fpr_drift",
+                    "false_alarms_per_100py","ppv_05","ppv_20","ppv_40")],
+  digits = 3, row.names = FALSE,
+  col.names = c("response","days","prompts/day","missing","sigma_m","power",
+                "false alarm rate","false alarms /100 patient-yrs",
+                "PPV at 5%","PPV at 20%","PPV at 40%"),
+  caption = "Best-power configurations in deployment units. PPV = share of alarms that are real, at three base rates of a genuine transition.")
+```
+
+The best configuration in the entire grid — 180 days, 6 prompts/day, continuous
+responses, lowest measurement noise — reaches power 0.90 and produces
+**`r round(p3$pw$false_alarms_per_100py[which.max(p3$pw$power)])` false alarms per
+100 patient-years**. Of every 100 alarms it raises,
+**`r round(100*p3$pw$ppv_05[which.max(p3$pw$power)])` are real** in a general
+population, **`r round(100*p3$pw$ppv_40[which.max(p3$pw$power)])`** even among
+remitted MDD patients tapering medication — the reproduction participant's own
+situation, and the most favourable base rate considered.
+
+To make a majority of alarms real at a 5% base rate, the false alarm rate would
+need to be **`r round(p3$pw$fpr_drift[which.max(p3$pw$power)]/p3$need[1])`× better**
+than anything achieved. Power is not the binding constraint; base rate is, and
+no amount of statistical power moves it.
+
+## What to do if you are designing an ESM study anyway
+
+![](../output/figures/P3_duration_density.png)
+
+1. **Buy duration, not density.** 180 days at 3 prompts/day outperformed 120 days
+   at 10, using under half the prompts. Critical slowing down is slow; sampling a
+   short approach more finely does not substitute for observing a longer one.
+2. **Spend on measurement quality before sampling.** Measurement noise swings
+   power by 2.6×, more than any design lever. Multi-item composites, not more
+   beeps.
+3. **Do not use rolling variance on coarse Likert items.** @sec-likert and
+   @sec-phase1 both show it measures the mean's position between category
+   boundaries. Use autocorrelation-based indicators, which are weaker on clean
+   data and far more robust on real data.
+4. **Fix the window width in advance and report the sweep.** It is the largest
+   analyst degree of freedom in the entire space.
+5. **Never use a nominal Kendall p-value.** Calibrate against surrogates.
+
+# Limitations
+
+**This is N = 1.** One person, one transition, one taper. A single transition in
+a single individual cannot establish generality — that is precisely the Bos & De
+Jonge [-@bos2014] critique, and nothing here escapes it. Every Phase 1 and
+Phase 2 result describes *this participant*, and the reproduction should be read
+as a case study, not as evidence about a population.
+
+**The simulation is a caricature, not a validated model of mood.** The cubic
+double-well is the normal form of a fold bifurcation, so it is generic *near a
+fold* — but assuming mood has a fold assumes the conclusion of the substantive
+debate. Phase 0 answers "if mood were like this, could we detect it", never "is
+mood like this".
+
+**The simulation is one-dimensional.** It cannot produce cross-correlation
+between emotions, which is the third indicator in the published work. That is
+the largest gap between this project and the papers it reproduces.
+
+**Phase 0's numbers are best-case.** The control parameter moves linearly and
+monotonically toward the fold — the most favourable possible case for a monotone
+trend statistic. Real deterioration is not monotone, and real power is lower than
+anything reported here.
+
+**The timescale anchor is unswept.** One model time unit = 5 hours, calibrated to
+an ESM autocorrelation of 0.4. Published inertia estimates span roughly 0.2–0.6,
+and that anchor scales every statement about days of data.
+
+**The clinical null cannot be placed arbitrarily close to the fold.** A system
+parked near a fold escapes by noise with near-certainty over a study-length
+horizon, so "deteriorating but stable just short of transition" is not a state
+this model can sustain. The false-alarm rates are conditional on that
+construction.
+
+**The preregistration is not blind.** Phases 0 and 1 were run before it was
+written, and it says so in its own first section. It registers the untested
+question — how far the conclusion moves across analyst choices — not a blind test
+of whether early warning signals are present.
+
+**Base rates are assumed, not estimated.** The 5/20/40% annual transition rates
+in @sec-phase3 are plausible ranges, not estimates from these data.
+
+# Conclusion
+
+The theory is not refuted here. On clean simulated data the planted signal is
+real and detectable. Everything that fails, fails downstream of that: in
+measurement, in inference, and in deployment arithmetic.
+
+What the project does show is that three independent mechanisms — an
+anticonservative trend test, a measurement-error bias, and a discretisation
+artefact — all push toward finding critical slowing down whether or not it is
+present; that in the canonical dataset the variance signal is not distinguishable
+from a rounding artefact; and that even a configuration meeting a conventional
+power bar would raise four false alarms for every real one in the population
+where it would be deployed.
+
+The useful contribution is not a verdict on the theory. It is a specification of
+what an ESM study would have to look like for the question to be answerable at
+all — and the observation that the field's standard analysis is considerably more
+fragile than its published confidence suggests.
+
+# References
+
+::: {#refs}
+:::
