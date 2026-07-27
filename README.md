@@ -14,11 +14,17 @@ about short, noisy, unevenly-spaced series.
 
 **Status: Phase 0 complete. No real data has been downloaded.**
 
+Headline: on simulated data where the transition is planted and known, **no design
+in a 216-cell grid reached 80% power with a false-alarm rate under 10%**. Three
+separate mechanisms bias the standard analysis toward finding critical slowing
+down whether or not it is present. Full write-up in [PHASE0.md](PHASE0.md);
+every contestable choice in [DECISIONS.md](DECISIONS.md).
+
 ## Phases
 
 | Phase | Question | Status |
 |---|---|---|
-| 0 | Does the detector work when the ground truth is known? | done |
+| 0 | Does the detector work when the ground truth is known? | done, see PHASE0.md |
 | 1 | Can the published finding be reproduced? (Kossakowski et al. 2017) | not started |
 | 2 | How much does the conclusion move across analyst degrees of freedom? | not started, **preregister first** |
 | 3 | How much data does a real ESM study need for this to be usable? | not started, **preregister first** |
