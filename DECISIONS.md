@@ -301,3 +301,22 @@ Cost: 40% longer simulations. Worth it.
 - **Multiple testing across indicators.** The grid reports the best indicator
   per configuration; if an analyst picks the best of four post hoc, the true
   false-positive rate is higher than the per-cell 5%. Not yet corrected.
+
+---
+
+## Errors made and corrected
+
+Four design errors were made during this project and caught before they reached
+a result. They are written up in full in `report/report.qmd` section
+"Errors made, and what they would have cost", because three of the four would
+have produced a wrong result that looked publishable.
+
+| error | would have caused | caught by |
+|---|---|---|
+| clinical null placed just short of the fold (D7) | every false-alarm rate computed against a null that was actually a transition | assertion counting how many nulls tipped |
+| no hold phase before the ramp (D13) | "longer series detect better" inflated by conditioning long windows on late-tipping paths | checking what fraction of paths each cell used |
+| "ceiling effects are mild by construction" (D12) | recommending the variance indicator, then calling its artefact a real signal in the real data | chasing an implausible sign in the clinical null |
+| degradation layers compared on one path | reporting that missing data improves detection | re-running across 103 paths before believing it |
+
+Three of the four pointed toward finding critical slowing down. That direction
+is not coincidence and is discussed in the report.

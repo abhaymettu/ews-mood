@@ -2361,9 +2361,18 @@ window.Quarto = {
   <li><a href="#translating-into-what-a-clinician-faces" id="toc-translating-into-what-a-clinician-faces" class="nav-link" data-scroll-target="#translating-into-what-a-clinician-faces"><span class="header-section-number">6.1</span> Translating into what a clinician faces</a></li>
   <li><a href="#what-to-do-if-you-are-designing-an-esm-study-anyway" id="toc-what-to-do-if-you-are-designing-an-esm-study-anyway" class="nav-link" data-scroll-target="#what-to-do-if-you-are-designing-an-esm-study-anyway"><span class="header-section-number">6.2</span> What to do if you are designing an ESM study anyway</a></li>
   </ul></li>
-  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">7</span> Limitations</a></li>
-  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">8</span> Conclusion</a></li>
-  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">9</span> References</a></li>
+  <li><a href="#sec-errors" id="toc-sec-errors" class="nav-link" data-scroll-target="#sec-errors"><span class="header-section-number">7</span> Errors made, and what they would have cost</a>
+  <ul class="collapse">
+  <li><a href="#the-clinical-null-tipped-100-of-the-time" id="toc-the-clinical-null-tipped-100-of-the-time" class="nav-link" data-scroll-target="#the-clinical-null-tipped-100-of-the-time"><span class="header-section-number">7.1</span> The clinical null tipped 100% of the time</a></li>
+  <li><a href="#long-windows-were-silently-conditioned-on-the-easiest-cases" id="toc-long-windows-were-silently-conditioned-on-the-easiest-cases" class="nav-link" data-scroll-target="#long-windows-were-silently-conditioned-on-the-easiest-cases"><span class="header-section-number">7.2</span> Long windows were silently conditioned on the easiest cases</a></li>
+  <li><a href="#ceiling-effects-are-mild-by-construction" id="toc-ceiling-effects-are-mild-by-construction" class="nav-link" data-scroll-target="#ceiling-effects-are-mild-by-construction"><span class="header-section-number">7.3</span> “Ceiling effects are mild by construction”</a></li>
+  <li><a href="#a-single-path-comparison-that-reversed-itself" id="toc-a-single-path-comparison-that-reversed-itself" class="nav-link" data-scroll-target="#a-single-path-comparison-that-reversed-itself"><span class="header-section-number">7.4</span> A single-path comparison that reversed itself</a></li>
+  <li><a href="#engineering-failures" id="toc-engineering-failures" class="nav-link" data-scroll-target="#engineering-failures"><span class="header-section-number">7.5</span> Engineering failures</a></li>
+  <li><a href="#what-this-section-is-evidence-for" id="toc-what-this-section-is-evidence-for" class="nav-link" data-scroll-target="#what-this-section-is-evidence-for"><span class="header-section-number">7.6</span> What this section is evidence for</a></li>
+  </ul></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">8</span> Limitations</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">9</span> Conclusion</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">10</span> References</a></li>
   </ul>
 </nav>
 </div>
@@ -3297,8 +3306,49 @@ Important
 </ol>
 </section>
 </section>
-<section id="limitations" class="level1" data-number="7">
-<h1 data-number="7"><span class="header-section-number">7</span> Limitations</h1>
+<section id="sec-errors" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Errors made, and what they would have cost</h1>
+<p>Four design errors were made and caught during this project. They are recorded here rather than in a commit log because <strong>three of the four would have produced a wrong result that looked entirely publishable</strong>, and because they are instances of exactly the fragility this project documents. A reader is entitled to know how close the reported numbers came to being different ones.</p>
+<p>Each was caught by an internal consistency check, not by inspection. That is the argument for building the checks.</p>
+<section id="the-clinical-null-tipped-100-of-the-time" class="level2" data-number="7.1">
+<h2 data-number="7.1" class="anchored" data-anchor-id="the-clinical-null-tipped-100-of-the-time"><span class="header-section-number">7.1</span> The clinical null tipped 100% of the time</h2>
+<p>The first non-transitioning null was constructed to sit just short of the fold, on the reasoning that a person who deteriorates without becoming ill is the hard case. Every single run tipped.</p>
+<p>The cause is not a coding bug but a property of the system: at <span class="math inline">\(c = -0.235\)</span> the Kramers escape rate is 0.15 per time unit, so a system parked near a fold escapes by noise with near-certainty over a study-length horizon. <strong>“Deteriorating but stable just short of transition” is not a state that exists</strong>, and the null had to be moved to <span class="math inline">\(c = -0.035\)</span>, calibrated to zero tips in 120 runs.</p>
+<p><em>Cost if uncaught:</em> every false-alarm rate in <a href="#sec-phase3" class="quarto-xref">Section 6</a> would have been computed against a null that was actually a transition. The headline deployment numbers would have been meaningless. <strong>Caught by an assertion that counted how many nulls tipped.</strong></p>
+</section>
+<section id="long-windows-were-silently-conditioned-on-the-easiest-cases" class="level2" data-number="7.2">
+<h2 data-number="7.2" class="anchored" data-anchor-id="long-windows-were-silently-conditioned-on-the-easiest-cases"><span class="header-section-number">7.2</span> Long windows were silently conditioned on the easiest cases</h2>
+<p>The analysis window is the <span class="math inline">\(D\)</span> days ending at the transition. Without a hold phase before the control-parameter ramp, a 180-day window could only be cut from paths that happened to tip after day 180 — about 70% of them. Those are not a random 70%: they are the paths where noise did <em>not</em> tip the system early, which means they travelled further along the ramp and slowed down more. The 30-day cells had no such restriction.</p>
+<p><em>Cost if uncaught:</em> “longer series detect better” — the central deliverable of Phase 0 and the basis of the duration-over-density recommendation — would have been part real and part an artefact of conditioning the long cells on the easiest paths. <strong>Caught by asking what fraction of paths each cell was actually using.</strong> A 120-day hold was added; the earliest transition across 200 paths is now day 244, so no conditioning occurs at any length.</p>
+</section>
+<section id="ceiling-effects-are-mild-by-construction" class="level2" data-number="7.3">
+<h2 data-number="7.3" class="anchored" data-anchor-id="ceiling-effects-are-mild-by-construction"><span class="header-section-number">7.3</span> “Ceiling effects are mild by construction”</h2>
+<p>This was written into the decisions log as a justification for not sweeping the response scale. It was wrong, and the thing it dismissed became the largest finding in the project (<a href="#sec-likert" class="quarto-xref">Section 3.4</a>, <a href="#sec-phase1" class="quarto-xref">Section 4</a>).</p>
+<p><em>Cost if uncaught:</em> Phase 0 would have concluded that variance is the strongest indicator — it had the highest mean power in the grid — and Phase 3 would have recommended it. The reproduction would then have found a variance signal in the real data and called it critical slowing down. <strong>Caught by chasing an anomaly: the clinical null showed a negative variance trend where theory says the latent variance rises.</strong> Chasing that one implausible sign is what produced the artefact result.</p>
+</section>
+<section id="a-single-path-comparison-that-reversed-itself" class="level2" data-number="7.4">
+<h2 data-number="7.4" class="anchored" data-anchor-id="a-single-path-comparison-that-reversed-itself"><span class="header-section-number">7.4</span> A single-path comparison that reversed itself</h2>
+<p>The degradation study (<a href="#sec-phase0" class="quarto-xref">Section 3</a>) initially reported Kendall’s <span class="math inline">\(\tau\)</span> for each layer of realism from one simulated trajectory. On that path, adding 30% missingness <em>improved</em> detection relative to the layer below it — a result that is not merely surprising but backwards.</p>
+<p>Averaged over 103 paths the ordering is monotone and missingness degrades detection as expected. The between-path SD of <span class="math inline">\(\tau\)</span> is ≈ 0.33, larger than most of the layer effects being compared, so single-trajectory orderings reverse routinely.</p>
+<p><em>Cost if uncaught:</em> the report would have claimed that missing data helps. <strong>Caught by re-running the comparison across paths before believing it.</strong> This is a small, self-inflicted instance of the Bos &amp; De Jonge <span class="citation" data-cites="bos2014">(<a href="#ref-bos2014" role="doc-biblioref">2014</a>)</span> problem — a single realisation cannot establish a pattern — encountered in simulation, where ground truth was available to settle it.</p>
+</section>
+<section id="engineering-failures" class="level2" data-number="7.5">
+<h2 data-number="7.5" class="anchored" data-anchor-id="engineering-failures"><span class="header-section-number">7.5</span> Engineering failures</h2>
+<p>Three, none of which changed a reported number, all of which could have:</p>
+<ul>
+<li>A <code>;</code>-chained pipeline continued past a crash in the power-grid script. The script had already written its tables, so the results were intact and only figures were lost — but the chain also appended a success marker to the log of the step that failed. <code>run_all.sh</code> now uses <code>set -euo pipefail</code>.</li>
+<li>Piping a script through <code>head</code> sent SIGPIPE and killed it before its final <code>saveRDS</code>. This surfaced only when the report failed to find the file. If the file had existed from an earlier run, the report would have silently used stale numbers.</li>
+<li>The expensive simulation grid was not cached, so a plotting bug meant re-running 30 minutes of computation. It is now cached with a guard that re-simulates if the grid definition changes.</li>
+</ul>
+</section>
+<section id="what-this-section-is-evidence-for" class="level2" data-number="7.6">
+<h2 data-number="7.6" class="anchored" data-anchor-id="what-this-section-is-evidence-for"><span class="header-section-number">7.6</span> What this section is evidence for</h2>
+<p>Three of four scientific errors pointed in the same direction: <strong>toward finding critical slowing down</strong>. That is not coincidence. An analysis with this many defensible choices has many more ways to manufacture a positive result than a negative one, and the errors that survive review are disproportionately the ones whose output looks like the hypothesis.</p>
+<p>That is the same asymmetry documented in <a href="#sec-phase0" class="quarto-xref">Section 3</a> for the trend test, the measurement-error bias, and the discretisation artefact. The difference is only that those three are properties of the method and these four were mine.</p>
+</section>
+</section>
+<section id="limitations" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Limitations</h1>
 <p><strong>This is N = 1.</strong> One person, one transition, one taper. A single transition in a single individual cannot establish generality — that is precisely the Bos &amp; De Jonge <span class="citation" data-cites="bos2014">(<a href="#ref-bos2014" role="doc-biblioref">2014</a>)</span> critique, and nothing here escapes it. Every Phase 1 and Phase 2 result describes <em>this participant</em>, and the reproduction should be read as a case study, not as evidence about a population.</p>
 <p><strong>The simulation is a caricature, not a validated model of mood.</strong> The cubic double-well is the normal form of a fold bifurcation, so it is generic <em>near a fold</em> — but assuming mood has a fold assumes the conclusion of the substantive debate. Phase 0 answers “if mood were like this, could we detect it”, never “is mood like this”.</p>
 <p><strong>The simulation is one-dimensional.</strong> It cannot produce cross-correlation between emotions, which is the third indicator in the published work. That is the largest gap between this project and the papers it reproduces.</p>
@@ -3308,14 +3358,15 @@ Important
 <p><strong>The preregistration is not blind.</strong> Phases 0 and 1 were run before it was written, and it says so in its own first section. It registers the untested question — how far the conclusion moves across analyst choices — not a blind test of whether early warning signals are present.</p>
 <p><strong>Base rates are assumed, not estimated.</strong> The 5/20/40% annual transition rates in <a href="#sec-phase3" class="quarto-xref">Section 6</a> are plausible ranges, not estimates from these data.</p>
 </section>
-<section id="conclusion" class="level1" data-number="8">
-<h1 data-number="8"><span class="header-section-number">8</span> Conclusion</h1>
+<section id="conclusion" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Conclusion</h1>
 <p>The theory is not refuted here. On clean simulated data the planted signal is real and detectable. Everything that fails, fails downstream of that: in measurement, in inference, and in deployment arithmetic.</p>
 <p>What the project does show is that three independent mechanisms — an anticonservative trend test, a measurement-error bias, and a discretisation artefact — all push toward finding critical slowing down whether or not it is present; that in the canonical dataset the variance signal is not distinguishable from a rounding artefact; and that even a configuration meeting a conventional power bar would raise four false alarms for every real one in the population where it would be deployed.</p>
 <p>The useful contribution is not a verdict on the theory. It is a specification of what an ESM study would have to look like for the question to be answerable at all — and the observation that the field’s standard analysis is considerably more fragile than its published confidence suggests.</p>
+<p>The strongest evidence for that fragility is in <a href="#sec-errors" class="quarto-xref">Section 7</a>. Four design errors were made here and caught; three of them would have produced a wrong result that looked publishable, and three of them pointed toward finding critical slowing down. An analysis is fragile when a careful analyst has to work this hard to avoid confirming the hypothesis by accident.</p>
 </section>
-<section id="references" class="level1" data-number="9">
-<h1 data-number="9"><span class="header-section-number">9</span> References</h1>
+<section id="references" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> References</h1>
 <div id="refs" class="references csl-bib-body hanging-indent" role="list">
 <div id="ref-bos2014" class="csl-entry" role="listitem">
 Bos, Elisabeth H, and Peter De Jonge. 2014. <span>“Critical Slowing down in Depression Is a Great Idea That Still Needs Empirical Proof.”</span> <em>Proceedings of the National Academy of Sciences</em> 111 (10): E878. <a href="https://doi.org/10.1073/pnas.1323672111">https://doi.org/10.1073/pnas.1323672111</a>.

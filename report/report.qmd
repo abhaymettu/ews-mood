@@ -407,6 +407,110 @@ no amount of statistical power moves it.
    analyst degree of freedom in the entire space.
 5. **Never use a nominal Kendall p-value.** Calibrate against surrogates.
 
+# Errors made, and what they would have cost {#sec-errors}
+
+Four design errors were made and caught during this project. They are recorded
+here rather than in a commit log because **three of the four would have produced
+a wrong result that looked entirely publishable**, and because they are
+instances of exactly the fragility this project documents. A reader is entitled
+to know how close the reported numbers came to being different ones.
+
+Each was caught by an internal consistency check, not by inspection. That is the
+argument for building the checks.
+
+## The clinical null tipped 100% of the time
+
+The first non-transitioning null was constructed to sit just short of the fold,
+on the reasoning that a person who deteriorates without becoming ill is the hard
+case. Every single run tipped.
+
+The cause is not a coding bug but a property of the system: at $c = -0.235$ the
+Kramers escape rate is 0.15 per time unit, so a system parked near a fold
+escapes by noise with near-certainty over a study-length horizon. **"Deteriorating
+but stable just short of transition" is not a state that exists**, and the null
+had to be moved to $c = -0.035$, calibrated to zero tips in 120 runs.
+
+*Cost if uncaught:* every false-alarm rate in @sec-phase3 would have been
+computed against a null that was actually a transition. The headline deployment
+numbers would have been meaningless. **Caught by an assertion that counted how
+many nulls tipped.**
+
+## Long windows were silently conditioned on the easiest cases
+
+The analysis window is the $D$ days ending at the transition. Without a hold
+phase before the control-parameter ramp, a 180-day window could only be cut from
+paths that happened to tip after day 180 — about 70% of them. Those are not a
+random 70%: they are the paths where noise did *not* tip the system early, which
+means they travelled further along the ramp and slowed down more. The 30-day
+cells had no such restriction.
+
+*Cost if uncaught:* "longer series detect better" — the central deliverable of
+Phase 0 and the basis of the duration-over-density recommendation — would have
+been part real and part an artefact of conditioning the long cells on the
+easiest paths. **Caught by asking what fraction of paths each cell was actually
+using.** A 120-day hold was added; the earliest transition across 200 paths is
+now day 244, so no conditioning occurs at any length.
+
+## "Ceiling effects are mild by construction"
+
+This was written into the decisions log as a justification for not sweeping the
+response scale. It was wrong, and the thing it dismissed became the largest
+finding in the project (@sec-likert, @sec-phase1).
+
+*Cost if uncaught:* Phase 0 would have concluded that variance is the strongest
+indicator — it had the highest mean power in the grid — and Phase 3 would have
+recommended it. The reproduction would then have found a variance signal in the
+real data and called it critical slowing down. **Caught by chasing an anomaly:
+the clinical null showed a negative variance trend where theory says the latent
+variance rises.** Chasing that one implausible sign is what produced the
+artefact result.
+
+## A single-path comparison that reversed itself
+
+The degradation study (@sec-phase0) initially reported Kendall's $\tau$ for each
+layer of realism from one simulated trajectory. On that path, adding 30%
+missingness *improved* detection relative to the layer below it — a result that
+is not merely surprising but backwards.
+
+Averaged over 103 paths the ordering is monotone and missingness degrades
+detection as expected. The between-path SD of $\tau$ is ≈ 0.33, larger than most
+of the layer effects being compared, so single-trajectory orderings reverse
+routinely.
+
+*Cost if uncaught:* the report would have claimed that missing data helps.
+**Caught by re-running the comparison across paths before believing it.** This
+is a small, self-inflicted instance of the Bos & De Jonge [-@bos2014] problem —
+a single realisation cannot establish a pattern — encountered in simulation,
+where ground truth was available to settle it.
+
+## Engineering failures
+
+Three, none of which changed a reported number, all of which could have:
+
+- A `;`-chained pipeline continued past a crash in the power-grid script. The
+  script had already written its tables, so the results were intact and only
+  figures were lost — but the chain also appended a success marker to the log of
+  the step that failed. `run_all.sh` now uses `set -euo pipefail`.
+- Piping a script through `head` sent SIGPIPE and killed it before its final
+  `saveRDS`. This surfaced only when the report failed to find the file. If the
+  file had existed from an earlier run, the report would have silently used
+  stale numbers.
+- The expensive simulation grid was not cached, so a plotting bug meant
+  re-running 30 minutes of computation. It is now cached with a guard that
+  re-simulates if the grid definition changes.
+
+## What this section is evidence for
+
+Three of four scientific errors pointed in the same direction: **toward finding
+critical slowing down**. That is not coincidence. An analysis with this many
+defensible choices has many more ways to manufacture a positive result than a
+negative one, and the errors that survive review are disproportionately the ones
+whose output looks like the hypothesis.
+
+That is the same asymmetry documented in @sec-phase0 for the trend test, the
+measurement-error bias, and the discretisation artefact. The difference is only
+that those three are properties of the method and these four were mine.
+
 # Limitations
 
 **This is N = 1.** One person, one transition, one taper. A single transition in
@@ -466,6 +570,12 @@ The useful contribution is not a verdict on the theory. It is a specification of
 what an ESM study would have to look like for the question to be answerable at
 all — and the observation that the field's standard analysis is considerably more
 fragile than its published confidence suggests.
+
+The strongest evidence for that fragility is in @sec-errors. Four design errors
+were made here and caught; three of them would have produced a wrong result that
+looked publishable, and three of them pointed toward finding critical slowing
+down. An analysis is fragile when a careful analyst has to work this hard to
+avoid confirming the hypothesis by accident.
 
 # References
 
