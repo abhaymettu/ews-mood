@@ -35,11 +35,13 @@ in `/data-raw` until Phase 0 is reviewed and signed off.
 ## Reproducing
 
 ```
-R -e 'renv::restore()'      # if renv is bootstrapped; see Environment below
-Rscript sim/01_ideal.R      #  ~20 s
-Rscript sim/02_null_calibration.R   # ~1.5 min
-Rscript sim/03_degrade.R    #  ~25 s
-Rscript sim/04_power.R      # ~15 min on 11 cores
+Rscript sim/01_ideal.R              #  ~20 s   gate: CSD on clean data
+Rscript sim/02_null_calibration.R   #  ~2 min  calibrated thresholds
+Rscript sim/03_degrade.R            #  ~1 min  degradation + attenuation
+Rscript sim/04_power.R              # ~11 min  the grid (cached; REFRESH=TRUE to redo)
+Rscript sim/05_measurement_error.R  # ~28 min  state-space comparison
+Rscript sim/07_likert_artifact.R    #  ~2 min  response-scale artefact
+Rscript sim/06_summary.R            #   ~1 s   the design-recommendation tables
 ```
 
 Run from the project root; the scripts assert this. Global seed `20260726`, set
@@ -56,7 +58,11 @@ sim/        01_ideal.R             gate: does CSD appear on clean data?
             02_null_calibration.R  what does "significant" mean here?
             03_degrade.R           what each layer of realism costs
             04_power.R             the power analysis
+            05_measurement_error.R does modelling measurement error help? (no)
+            06_summary.R           reads the tables, answers the design question
+            07_likert_artifact.R   the response scale can reverse the signal
 output/     figures/, tables/  (script-generated, safe to delete)
+PHASE0.md      findings
 DECISIONS.md   every contestable choice, what else was available, why this one
 ```
 
@@ -89,11 +95,11 @@ anchor (DECISIONS.md D3).
 
 | | what it is | why it is here |
 |---|---|---|
-| `variance` | rolling variance of the detrended series | the standard indicator; rank-preserving under additive white noise, so unusually robust |
+| `variance` | rolling variance of the detrended series | the standard indicator; robust to additive white noise but **badly confounded by Likert rounding** — see PHASE0.md section 4 |
 | `ac1_naive` | `cor(y[-n], y[-1])` | what the applied literature computes; treats consecutive *observations* as lag-1 regardless of elapsed time |
 | `ac1_withinday` | same, restricted to gaps <= 3 h | cheap fix for the overnight gap; costs sample size |
 | `ac1_ou` | continuous-time OU fitted by exact ML on irregular gaps | estimates `lambda` directly, so irregular spacing is data rather than a nuisance |
-| `ac1_ou_me` | OU + explicit measurement-error variance, Kalman filter | the only one that separates true slowing from shrinking attenuation |
+| `ac1_ou_me` | OU + explicit measurement-error variance, Kalman filter | the only one that separates true slowing from shrinking attenuation — and it still loses, see PHASE0.md section 5 |
 
 Hand-rolled rather than taken from `earlywarnings`, which requires an evenly
 spaced `ts` object (DECISIONS.md D8).
