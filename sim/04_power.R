@@ -25,14 +25,25 @@ source("R/setup.R")
 
 NREP     <- 400
 
+## K = 0 is a continuous response, K = 7 a 7-point Likert item. This is a factor
+## rather than a fixed setting because sim/07 showed the response scale can
+## reverse the sign of the variance indicator: rounding variance depends on where
+## the mean sits between category boundaries, and the mean slides as the system
+## approaches the fold. Without a continuous reference arm there is no way to
+## tell how much of an indicator's apparent power is dynamics and how much is
+## scale geometry (DECISIONS.md D12, corrected).
 GRID <- expand.grid(
   days      = c(30, 60, 120, 180),
   ppd       = c(3, 6, 10),
   miss      = c("none", "mcar30", "mnar30"),
   sigma_m   = c(0.1, 0.4, 0.8),
+  K         = c(0, 7),
   stringsAsFactors = FALSE
 )
-WIN_FRAC <- c(0.25, 0.50)   # rolling window as a fraction of series length
+## Fixed at half the series: sweeping it (0.25 vs 0.50) moved mean power by 0.008
+## in the first run, which does not justify doubling the grid. Phase 2 sweeps it
+## properly as an analyst degree of freedom.
+WIN_FRAC <- 0.50
 INDS     <- c("variance", "ac1_naive", "ac1_withinday", "ac1_ou")
 MISS     <- list(none = c("none", 0), mcar30 = c("mcar", 0.30), mnar30 = c("mnar", 0.30))
 
@@ -60,7 +71,7 @@ run_rep <- function(i, scenario) {
     if (end_h < G$days * 24) next                        # not enough history
     m <- MISS[[G$miss]]
     set.seed(SEED + 900000 + i * 1000 + g)               # observation-layer noise
-    o <- observe(p, end_h, G$days, G$ppd, sigma_m = G$sigma_m, K = 7,
+    o <- observe(p, end_h, G$days, G$ppd, sigma_m = G$sigma_m, K = G$K,
                  mechanism = m[1], miss_rate = as.numeric(m[2]))
     if (is.null(o) || nrow(o) < 60) next
     ## detrend bandwidth scales with series length: a fixed 14-day bandwidth
@@ -95,9 +106,11 @@ REFRESH <- isTRUE(as.logical(Sys.getenv("REFRESH", "FALSE")))
 if (!REFRESH && file.exists(RAW)) {
   all_res <- readRDS(RAW)
   cat(sprintf("using cached grid: %d rows (REFRESH=TRUE to re-simulate)\n", nrow(all_res)))
-  stopifnot("cached grid does not match the current GRID" =
-              nrow(unique(all_res[names(GRID)])) == nrow(GRID))
-} else {
+  ok <- all(names(GRID) %in% names(all_res)) &&
+        nrow(unique(all_res[names(GRID)])) == nrow(GRID)
+  if (!ok) { cat("cache does not match the current GRID; re-simulating\n"); REFRESH <- TRUE }
+}
+if (REFRESH || !file.exists(RAW)) {
   ncore <- max(1L, parallel::detectCores() - 1L)
   cat(sprintf("grid: %d cells x %d window widths x %d indicators; %d reps x 3 scenarios on %d cores\n",
               nrow(GRID), length(WIN_FRAC), length(INDS), NREP, ncore))
@@ -112,7 +125,7 @@ if (!REFRESH && file.exists(RAW)) {
 }
 
 ## --- per-cell threshold from the static null, then power and false alarms ----
-key <- c("days", "ppd", "miss", "sigma_m", "win_frac", "indicator")
+key <- c("days", "ppd", "miss", "sigma_m", "K", "win_frac", "indicator")
 sp  <- split(all_res, all_res[key], drop = TRUE)
 
 power <- do.call(rbind, lapply(sp, function(z) {
@@ -139,28 +152,38 @@ rownames(power) <- NULL
 write.csv(power, file.path(TAB, "04_power.csv"), row.names = FALSE)
 
 cat("\n=== POWER at a per-cell 5% level, best indicator per configuration ===\n")
-best <- do.call(rbind, lapply(split(power, power[c("days", "ppd", "miss", "sigma_m")], drop = TRUE),
-                              function(z) z[which.max(z$auc), ]))
-print(best[order(-best$power),
-           c("days", "ppd", "miss", "sigma_m", "indicator", "win_frac",
-             "n_obs", "power", "fpr_drift", "auc")][1:20, ], row.names = FALSE, digits = 3)
+best <- do.call(rbind, lapply(split(power, power[c("days", "ppd", "miss", "sigma_m", "K")],
+                                    drop = TRUE), function(z) z[which.max(z$auc), ]))
+print(head(best[order(-best$power),
+                c("days", "ppd", "miss", "sigma_m", "K", "indicator",
+                  "n_obs", "power", "fpr_drift", "auc")], 20),
+      row.names = FALSE, digits = 3)
 
-cat("\n=== marginal effects (mean power over the rest of the grid) ===\n")
-for (v in c("days", "ppd", "miss", "sigma_m", "indicator", "win_frac")) {
-  a <- aggregate(cbind(power, fpr_drift, auc) ~ get(v), power, mean)
+cat("\n=== marginal effects (mean over the rest of the grid) ===\n")
+for (v in c("days", "ppd", "miss", "sigma_m", "K", "indicator")) {
+  a <- aggregate(power[c("power", "fpr_drift", "auc")], list(power[[v]]), mean, na.rm = TRUE)
   names(a)[1] <- v
   cat("\n"); print(a, row.names = FALSE, digits = 3)
 }
 
+## The comparison that matters: does the indicator ranking depend on whether the
+## response was discretised? If it does, the ranking is scale geometry, not
+## dynamics (sim/07).
+cat("\n=== indicator ranking, continuous (K=0) vs 7-point Likert (K=7) ===\n")
+rk <- aggregate(power[c("power", "auc")], power[c("K", "indicator")], mean, na.rm = TRUE)
+print(reshape(rk, idvar = "indicator", timevar = "K", direction = "wide"),
+      row.names = FALSE, digits = 3)
+
 ## --- figures -----------------------------------------------------------------
 power$miss <- factor(power$miss, c("none", "mcar30", "mnar30"))
-pw <- subset(power, win_frac == 0.5)
+power$K <- factor(power$K, c(0, 7), c("continuous", "Likert-7"))
+pw <- power
 
 p1 <- ggplot(pw, aes(days, power, colour = factor(ppd), group = ppd)) +
   geom_hline(yintercept = 0.05, linetype = 3, colour = "grey50") +
   geom_hline(yintercept = 0.80, linetype = 2, colour = "grey50") +
   geom_line() + geom_point(size = 1) +
-  facet_grid(sigma_m ~ miss, labeller = label_both) +
+  facet_grid(sigma_m + K ~ miss, labeller = label_both) +
   scale_colour_viridis_d(end = .85, name = "prompts/day") +
   coord_cartesian(ylim = c(0, 1)) +
   labs(title = "Power to detect critical slowing down before a transition",
@@ -172,7 +195,7 @@ ggsave(file.path(FIG, "04_power_grid.png"), p1, width = 10, height = 7.5, dpi = 
 p2 <- ggplot(pw, aes(days, power, colour = indicator)) +
   geom_hline(yintercept = 0.8, linetype = 2, colour = "grey50") +
   geom_line() +
-  facet_grid(sigma_m ~ ppd, labeller = label_both) +
+  facet_grid(sigma_m + K ~ ppd, labeller = label_both) +
   scale_colour_brewer(palette = "Dark2") +
   labs(title = "Indicator comparison", x = "days of history", y = "power") +
   theme(legend.position = "bottom")
@@ -181,6 +204,7 @@ ggsave(file.path(FIG, "04_power_indicators.png"), p2, width = 10, height = 7, dp
 p3 <- ggplot(pw, aes(fpr_drift, power, colour = factor(days), shape = miss)) +
   geom_abline(slope = 1, intercept = 0, colour = "grey70") +
   geom_point(alpha = .8) +
+  facet_wrap(~K) +
   scale_colour_viridis_d(end = .85, name = "days") +
   labs(title = "Power against realistic false alarms",
        subtitle = "x-axis: alarm rate on a person who deteriorates but never tips. Points near the diagonal are useless.",

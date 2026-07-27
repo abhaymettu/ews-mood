@@ -177,12 +177,94 @@ Justified by a convergence check in `sim/01_ideal.R` against dt = 0.002:
 transition-time distribution and stationary SD agree to within Monte Carlo
 error. Sampling is at ~3-minute resolution, ~30 substeps per ESM prompt.
 
-### D12 — Likert fixed at 7 categories in the power grid
-Discretisation is applied throughout the power analysis but not swept, because
-`sim/03` shows it is a small effect next to measurement noise (tau 0.528 ->
-0.468 for the rounding step alone). Ceiling effects are mild by construction:
-the euthymic state sits near 6.3 on a 1-7 item. A design that pins the ceiling
-would be worse and is not tested.
+### D12 — Likert response scale — CORRECTED, this was wrong
+**Original decision:** fix K = 7 and don't sweep it, on the grounds that
+`sim/03` showed rounding costs only tau 0.528 -> 0.468, small next to
+measurement noise, and that ceiling effects were "mild by construction".
+
+**That was wrong, and it is the most consequential error in Phase 0.**
+
+Found by asking why the clinical null had a *negative* variance trend
+(tau = -0.29) when the latent variance in those same runs rises ~14%, exactly
+as critical slowing down predicts.
+
+Mechanism: the variance of a rounded variable depends on where its mean sits
+between two category boundaries. A mean sitting on a boundary produces
+near-Bernoulli variance across the two categories; a mean mid-category produces
+almost none. Approaching a transition the latent mean *slides*, so it moves
+relative to the boundaries and drags rounding variance along with it — by an
+amount that can dwarf, and reverse, the real change in process variance.
+
+`sim/07`, 200 replicates, mean tau of the variance indicator on the clinical
+null (correct answer: mildly positive):
+
+| response model | tau on null | variance AUC |
+|---|---|---|
+| continuous | +0.29 (correct) | 0.78 |
+| Likert-7, euthymic mid-scale | +0.52 (inflated) | 0.93 |
+| Likert-7, euthymic near ceiling | **-0.33 (wrong sign)** | 0.95 |
+| Likert-11, euthymic near ceiling | **-0.63 (wrong sign)** | 0.77 |
+
+The autocorrelation indicators sit at AUC 0.72-0.76 across all four response
+models. Variance ranges 0.77-0.95 on identical dynamics.
+
+Three things follow:
+1. **The `sim/04` conclusion that variance is the strongest indicator was
+   contaminated.** The grid used one arbitrary scale placement, and it happened
+   to be one where the artefact aligned with the signal. The grid has been
+   re-run with the response model (continuous vs Likert-7) as an explicit
+   factor so the artefact-free ranking is visible.
+2. **More categories is not the fix.** Likert-11 was the worst configuration
+   tested. What matters is where the mean sits and how far it travels relative
+   to the boundaries, not how many boundaries there are.
+3. **Rising variance on Likert ESM data is confounded with the mean's position
+   on the response scale.** Since a sliding mean is the *defining* feature of an
+   approach to a transition, this confound is present in exactly the situation
+   the method is meant to be used in. Autocorrelation indicators are far less
+   vulnerable and should be preferred on discretised data, despite being weaker
+   on continuous data.
+
+Still not swept: where the scale is centred, and whether composites of several
+items (which raise effective resolution) rescue the variance indicator.
+
+### D14 — Modelling measurement error correctly does not help
+`ind_ou_me_ac1` fits an OU state process with an explicit measurement-noise
+variance by Kalman filter, so lambda is identified separately from sigma_m. It
+was built because D5 shows the naive AC1 is biased in the same direction as the
+hypothesis being tested.
+
+It works as designed on parameter recovery (`sim/05` Q1, stationary OU on the
+real ESM sampling grid, true lambda = 0.6/hour):
+
+| sigma_m | naive AC1 | lambda, `fit_ou` | lambda, `fit_ou_me` | sigma_m recovered |
+|---|---|---|---|---|
+| 0.1 | 0.34 | 0.78 | 0.62 | 0.08 |
+| 0.4 | 0.10 | 3.36 | 1.13 | 0.32 |
+| 0.8 | 0.03 | **12.45** | 3.70 | 0.68 |
+
+`fit_ou` is catastrophic at realistic noise: it reads white measurement noise as
+ultra-fast mean reversion and returns lambda 20x too large. The state-space
+version recovers both parameters far better.
+
+**And it still loses.** On discrimination (`sim/05` Q2), AUC against the
+clinical null:
+
+| sigma_m | `ac1_ou` | `ac1_naive` | `ac1_ou_me` |
+|---|---|---|---|
+| 0.1 | 0.91 | 0.92 | 0.72 |
+| 0.4 | 0.71 | 0.69 | 0.62 |
+| 0.8 | 0.65 | 0.62 | 0.55 |
+
+Worst indicator at every noise level. The reason is bias-variance: on rolling
+windows of ~450 observations, a four-parameter Kalman fit has enough sampling
+variance that the resulting indicator series is mostly noise, and a Kendall tau
+computed on it carries little information. Removing the bias cost more variance
+than the bias was worth.
+
+This is worth stating plainly because the instinct — "the naive estimator is
+biased, so model the nuisance properly" — is correct in principle and wrong
+here at ESM window sizes. It would presumably become right with longer windows
+or pooled estimation across people. Not tested.
 
 ### D13 — A 120-day hold before the ramp, to avoid conditioning on late tippers
 The control parameter is held at its starting value for 120 days before the ramp
